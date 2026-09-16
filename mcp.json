@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "graylog": {
+      "command": "uvx",
+      "args": ["--from", "fastmcp", "--with", "requests", "fastmcp", "run", "/PATH/TO/graylog-mcp/server/graylog_mcp.py"],
+      "env": {
+        "GRAYLOG_URL": "https://graylog.example.com",
+        "GRAYLOG_TOKEN": "${env:GRAYLOG_TOKEN}",
+        "GRAYLOG_VERIFY_TLS": "true",
+        "GRAYLOG_TIMEOUT": "30"
+      },
+      "disabled": false
+    }
+  }
+}
