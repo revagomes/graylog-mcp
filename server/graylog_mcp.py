@@ -27,6 +27,9 @@ Configuration via environment variables:
     GRAYLOG_URL        - Base URL of the Graylog instance (required),
                          e.g. https://graylog.example.com
     GRAYLOG_TOKEN      - REST API access token (required)
+    GRAYLOG_COOKIE     - Optional raw Cookie header for instances behind an
+                         SSO/OAuth2 proxy, e.g. "_oauth2_proxy=<value>". Use
+                         this OR a token. Session cookies are short-lived.
     GRAYLOG_VERIFY_TLS - "true"/"false" to toggle TLS verification (default: true)
     GRAYLOG_TIMEOUT    - Per-request timeout in seconds (default: 30)
 
@@ -43,6 +46,10 @@ from fastmcp import FastMCP
 
 GRAYLOG_URL = os.environ.get("GRAYLOG_URL", "").rstrip("/")
 GRAYLOG_TOKEN = os.environ.get("GRAYLOG_TOKEN", "")
+# Optional raw Cookie header value, for instances behind an SSO/OAuth2 proxy
+# where a browser session cookie is the only accepted credential. Supply the
+# proxy's session cookie(s), e.g. "_oauth2_proxy=<value>".
+GRAYLOG_COOKIE = os.environ.get("GRAYLOG_COOKIE", "")
 VERIFY_TLS = os.environ.get("GRAYLOG_VERIFY_TLS", "true").lower() != "false"
 TIMEOUT = int(os.environ.get("GRAYLOG_TIMEOUT", "30"))
 
@@ -66,27 +73,37 @@ mcp = FastMCP(
 # -- Helpers --------------------------------------------------------------------
 
 
-def _auth() -> tuple[str, str]:
-    """Return the HTTP Basic auth pair for token authentication.
+def _auth() -> tuple[str, str] | None:
+    """Return the HTTP Basic auth pair for token authentication, or None.
 
     Graylog convention: the access token is the username and the literal
-    string "token" is the password.
+    string "token" is the password. When a session cookie is supplied
+    (GRAYLOG_COOKIE), token auth is optional and this returns None.
     """
-    if not GRAYLOG_TOKEN:
-        raise RuntimeError(
-            "GRAYLOG_TOKEN is not set. Create a REST API access token in "
-            "Graylog (user menu -> Edit tokens) and set it in the MCP env."
-        )
-    return (GRAYLOG_TOKEN, "token")
+    if GRAYLOG_TOKEN:
+        return (GRAYLOG_TOKEN, "token")
+    if GRAYLOG_COOKIE:
+        return None
+    raise RuntimeError(
+        "No credentials configured. Set GRAYLOG_TOKEN (a REST API access "
+        "token) or, for instances behind an SSO/OAuth2 proxy, GRAYLOG_COOKIE "
+        "(a browser session cookie such as _oauth2_proxy=<value>)."
+    )
 
 
 def _headers(accept: str = "application/json") -> dict:
-    """Standard headers. X-Requested-By is required by Graylog for API calls."""
-    return {
+    """Standard headers. X-Requested-By is required by Graylog for API calls.
+
+    Includes the SSO session cookie when GRAYLOG_COOKIE is configured.
+    """
+    headers = {
         "Accept": accept,
         "Content-Type": "application/json",
         "X-Requested-By": "kiro-graylog-mcp",
     }
+    if GRAYLOG_COOKIE:
+        headers["Cookie"] = GRAYLOG_COOKIE
+    return headers
 
 
 def _request(
@@ -121,6 +138,7 @@ def _request(
             auth=_auth(),
             verify=VERIFY_TLS,
             timeout=TIMEOUT,
+            allow_redirects=False,
         )
     except requests.exceptions.SSLError as exc:
         raise RuntimeError(
@@ -129,6 +147,28 @@ def _request(
         ) from exc
     except requests.exceptions.RequestException as exc:
         raise RuntimeError(f"Request to {url} failed: {exc}") from exc
+
+    # An authenticating reverse proxy (e.g. oauth2-proxy / SSO) in front of
+    # Graylog will redirect API calls to a sign-in page instead of letting
+    # the REST API evaluate the token. Detect that and fail loudly rather
+    # than silently parsing an HTML login page as an empty result.
+    if response.is_redirect or response.status_code in (301, 302, 303, 307, 308):
+        location = response.headers.get("location", "")
+        if any(marker in location.lower() for marker in ("oauth", "sign_in", "signin", "login", "sso", "saml")):
+            raise RuntimeError(
+                "Graylog is behind an SSO/OAuth2 reverse proxy. The API "
+                f"redirected to a sign-in page ({location.split('?')[0]}). A "
+                "Graylog REST API token cannot authenticate through this "
+                "proxy — it requires a browser SSO session or an OAuth2 "
+                "credential accepted by the proxy. This MCP needs direct "
+                "network access to the Graylog REST API (bypassing the SSO "
+                "front door), e.g. an internal API URL, a VPN/port-forward "
+                "to the Graylog node, or a proxy-issued access token."
+            )
+        raise RuntimeError(
+            f"Unexpected redirect ({response.status_code}) to {location}. "
+            "Check GRAYLOG_URL points directly at the Graylog REST API."
+        )
 
     if response.status_code == 401:
         raise RuntimeError(
