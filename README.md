@@ -81,9 +81,16 @@ from step 1. You can also inject the token from your shell environment with
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
 | `GRAYLOG_URL` | **Yes** | _(none)_ | Base URL of the Graylog instance, e.g. `https://graylog.example.com` |
-| `GRAYLOG_TOKEN` | **Yes** | _(none)_ | REST API access token |
+| `GRAYLOG_TOKEN` | **Yes*** | _(none)_ | REST API access token |
+| `GRAYLOG_COOKIE` | **Yes*** | _(none)_ | Raw `Cookie` header for instances behind an SSO/OAuth2 proxy, e.g. `_oauth2_proxy=<value>` |
 | `GRAYLOG_VERIFY_TLS` | No | `true` | Set `false` only for internal-CA instances |
 | `GRAYLOG_TIMEOUT` | No | `30` | Per-request timeout in seconds |
+
+\* Provide **either** `GRAYLOG_TOKEN` **or** `GRAYLOG_COOKIE`. Use the cookie when
+Graylog is fronted by an SSO/OAuth2 reverse proxy (e.g. oauth2-proxy) that redirects
+API calls to a sign-in page — a REST API token cannot authenticate through such a proxy.
+Export the proxy's session cookie from your browser (DevTools → Application → Cookies).
+Session cookies are short-lived and must be re-exported when they expire.
 
 ## Usage Examples
 

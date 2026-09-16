@@ -49,9 +49,14 @@ All configuration is via environment variables set in `mcp.json`:
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
 | `GRAYLOG_URL` | **Yes** | _(none)_ | Base URL of the Graylog instance, e.g. `https://graylog.example.com` |
-| `GRAYLOG_TOKEN` | **Yes** | _(none)_ | REST API access token |
+| `GRAYLOG_TOKEN` | **Yes*** | _(none)_ | REST API access token |
+| `GRAYLOG_COOKIE` | **Yes*** | _(none)_ | Raw `Cookie` header for instances behind an SSO/OAuth2 proxy, e.g. `_oauth2_proxy=<value>` |
 | `GRAYLOG_VERIFY_TLS` | No | `true` | Set `false` only for internal-CA instances |
 | `GRAYLOG_TIMEOUT` | No | `30` | Per-request timeout in seconds |
+
+\* Provide **either** `GRAYLOG_TOKEN` (direct API access) **or** `GRAYLOG_COOKIE`
+(when Graylog sits behind an SSO/OAuth2 reverse proxy that redirects API calls to a
+sign-in page). Session cookies are short-lived and must be re-exported when they expire.
 
 ## Available MCP Tools
 
