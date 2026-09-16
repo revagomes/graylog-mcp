@@ -3,7 +3,7 @@
 A Kiro Power that runs a **local MCP server** for querying a self-hosted
 [Graylog](https://graylog.org) instance via its REST API.
 
-Default target: `https://graylog.example.com`
+You point it at your own Graylog instance with the `GRAYLOG_URL` environment variable.
 
 ## Problem
 
@@ -71,15 +71,16 @@ uvx --version   # part of the uv toolchain: https://docs.astral.sh/uv/
 }
 ```
 
-Replace `/path/to/graylog-mcp` with the absolute path to this directory, and set
-`GRAYLOG_TOKEN` to the token from step 1. You can also inject the token from your shell
-environment with `"GRAYLOG_TOKEN": "${env:GRAYLOG_TOKEN}"` to keep it out of the config file.
+Replace `/path/to/graylog-mcp` with the absolute path to this directory, set
+`GRAYLOG_URL` to your Graylog instance base URL, and set `GRAYLOG_TOKEN` to the token
+from step 1. You can also inject the token from your shell environment with
+`"GRAYLOG_TOKEN": "${env:GRAYLOG_TOKEN}"` to keep it out of the config file.
 
 ## Configuration
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
-| `GRAYLOG_URL` | No | `https://graylog.example.com` | Base URL of the Graylog instance |
+| `GRAYLOG_URL` | **Yes** | _(none)_ | Base URL of the Graylog instance, e.g. `https://graylog.example.com` |
 | `GRAYLOG_TOKEN` | **Yes** | _(none)_ | REST API access token |
 | `GRAYLOG_VERIFY_TLS` | No | `true` | Set `false` only for internal-CA instances |
 | `GRAYLOG_TIMEOUT` | No | `30` | Per-request timeout in seconds |

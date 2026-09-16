@@ -10,7 +10,8 @@ the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 
 A local MCP server that connects to a self-hosted Graylog instance
-(default: https://graylog.example.com) through its REST API.
+through its REST API. The target instance is configured entirely via the
+GRAYLOG_URL environment variable.
 
 It exposes clean tool interfaces over the stable Graylog "search scripting"
 API (/api/search/messages and /api/search/aggregate) plus read-only
@@ -23,8 +24,8 @@ the token is sent as the HTTP Basic *username* and the literal string
 "token" as the *password*. No real username/password ever leaves the machine.
 
 Configuration via environment variables:
-    GRAYLOG_URL        - Base URL of the Graylog instance
-                         (default: https://graylog.example.com)
+    GRAYLOG_URL        - Base URL of the Graylog instance (required),
+                         e.g. https://graylog.example.com
     GRAYLOG_TOKEN      - REST API access token (required)
     GRAYLOG_VERIFY_TLS - "true"/"false" to toggle TLS verification (default: true)
     GRAYLOG_TIMEOUT    - Per-request timeout in seconds (default: 30)
@@ -40,9 +41,7 @@ from fastmcp import FastMCP
 
 # -- Configuration --------------------------------------------------------------
 
-GRAYLOG_URL = os.environ.get(
-    "GRAYLOG_URL", "https://graylog.example.com"
-).rstrip("/")
+GRAYLOG_URL = os.environ.get("GRAYLOG_URL", "").rstrip("/")
 GRAYLOG_TOKEN = os.environ.get("GRAYLOG_TOKEN", "")
 VERIFY_TLS = os.environ.get("GRAYLOG_VERIFY_TLS", "true").lower() != "false"
 TIMEOUT = int(os.environ.get("GRAYLOG_TIMEOUT", "30"))
@@ -107,6 +106,11 @@ def _request(
         accept: Accept header value.
     """
     url = f"{API_BASE}/{path.lstrip('/')}"
+    if not GRAYLOG_URL:
+        raise RuntimeError(
+            "GRAYLOG_URL is not set. Set it in the MCP env to your Graylog "
+            "instance base URL, e.g. https://graylog.example.com"
+        )
     try:
         response = requests.request(
             method,

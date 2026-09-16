@@ -11,7 +11,7 @@ author: "Renato Vasconcellos Gomes"
 ## Overview
 
 This Power provides a **local MCP server** that connects to a self-hosted Graylog instance
-(default: `https://graylog.example.com`) through its REST API. It lets an LLM search
+(configured via the `GRAYLOG_URL` environment variable) through its REST API. It lets an LLM search
 logs, summarize trends, and orient itself in the environment using clean tool interfaces.
 
 Rather than depending on Graylog's experimental built-in MCP endpoint, this power runs a small
@@ -48,7 +48,7 @@ All configuration is via environment variables set in `mcp.json`:
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
-| `GRAYLOG_URL` | No | `https://graylog.example.com` | Base URL of the Graylog instance |
+| `GRAYLOG_URL` | **Yes** | _(none)_ | Base URL of the Graylog instance, e.g. `https://graylog.example.com` |
 | `GRAYLOG_TOKEN` | **Yes** | _(none)_ | REST API access token |
 | `GRAYLOG_VERIFY_TLS` | No | `true` | Set `false` only for internal-CA instances |
 | `GRAYLOG_TIMEOUT` | No | `30` | Per-request timeout in seconds |
