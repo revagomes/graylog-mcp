@@ -38,6 +38,7 @@ Run via:
 """
 
 import os
+import sys
 
 import requests
 from fastmcp import FastMCP
@@ -52,6 +53,10 @@ GRAYLOG_TOKEN = os.environ.get("GRAYLOG_TOKEN", "")
 GRAYLOG_COOKIE = os.environ.get("GRAYLOG_COOKIE", "")
 VERIFY_TLS = os.environ.get("GRAYLOG_VERIFY_TLS", "true").lower() != "false"
 TIMEOUT = int(os.environ.get("GRAYLOG_TIMEOUT", "30"))
+
+# Tracks whether the "TLS verification disabled" warning has been emitted, so it
+# is shown once per process rather than on every request.
+_TLS_WARNING_EMITTED = False
 
 # Graylog REST API is served under /api on modern versions.
 API_BASE = f"{GRAYLOG_URL}/api"
@@ -128,6 +133,26 @@ def _request(
             "GRAYLOG_URL is not set. Set it in the MCP env to your Graylog "
             "instance base URL, e.g. https://graylog.example.com"
         )
+    # Refuse cleartext HTTP: the REST API token travels as HTTP Basic auth, so
+    # sending it over http:// would expose it to anyone on the network path.
+    if not GRAYLOG_URL.startswith("https://"):
+        raise RuntimeError(
+            "GRAYLOG_URL must use HTTPS to protect the access token in transit. "
+            f"Got: {GRAYLOG_URL!r}. Change it to start with https:// ."
+        )
+    # Warn once when TLS verification is disabled: it is a documented escape
+    # hatch for internal CAs, but it removes MITM protection for the token, so
+    # the operator should see it is off rather than have it happen silently.
+    global _TLS_WARNING_EMITTED
+    if not VERIFY_TLS and not _TLS_WARNING_EMITTED:
+        print(
+            "[graylog-mcp] WARNING: TLS certificate verification is DISABLED "
+            "(GRAYLOG_VERIFY_TLS=false). The access token is exposed to "
+            "man-in-the-middle attacks. Use this only with a trusted internal "
+            "CA on a trusted network.",
+            file=sys.stderr,
+        )
+        _TLS_WARNING_EMITTED = True
     try:
         response = requests.request(
             method,
