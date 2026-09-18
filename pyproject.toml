@@ -1,0 +1,26 @@
+[project]
+name = "graylog-mcp"
+version = "0.1.0"
+description = "Graylog MCP server — read-only log search and inspection over the Graylog REST API."
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp",
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["server/tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["server"]
+omit = ["server/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
